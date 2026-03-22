@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>POS TOKO FULL</title>
+<title>POS FIX FINAL</title>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
@@ -14,6 +14,7 @@ body{margin:0;font-family:Segoe UI;display:flex;background:#f1f5f9}
 .sidebar{
 width:220px;height:100vh;background:#111827;color:white;padding:10px
 }
+
 .sidebar button{
 width:100%;margin:5px 0;padding:10px;background:none;border:0;color:white;text-align:left;cursor:pointer
 }
@@ -40,22 +41,21 @@ position:fixed;bottom:20px;right:20px;background:black;color:white;padding:10px;
 <body>
 
 <div class="sidebar">
-<h3>POS TOKO</h3>
+<h3>POS FIX</h3>
 <button onclick="nav('dash')">Dashboard</button>
 <button onclick="nav('stok')">Stok</button>
 <button onclick="nav('kasir')">Kasir</button>
 <button onclick="nav('history')">History</button>
-<button onclick="toggleDark()">Dark Mode</button>
+<button onclick="toggleDark()">Dark</button>
 </div>
 
 <div class="main">
 
-<!-- DASHBOARD -->
+<!-- DASH -->
 <div id="dash">
-
 <div class="card">
 Produk: <b id="pCount"></b><br>
-Total Stok: <b id="sCount"></b><br>
+Stok: <b id="sCount"></b><br>
 Hari ini: <b id="todayIncome"></b><br>
 Total: <b id="allIncome"></b>
 </div>
@@ -63,12 +63,10 @@ Total: <b id="allIncome"></b>
 <div class="card">
 <canvas id="chart"></canvas>
 </div>
-
 </div>
 
 <!-- STOK -->
 <div id="stok" class="hidden">
-
 <div class="card">
 <input id="kode" placeholder="Kode">
 <input id="nama" placeholder="Nama">
@@ -83,12 +81,10 @@ Total: <b id="allIncome"></b>
 <tbody id="tbl"></tbody>
 </table>
 </div>
-
 </div>
 
 <!-- KASIR -->
 <div id="kasir" class="hidden">
-
 <div class="card">
 <input id="scan" placeholder="Kode">
 <button onclick="addCart()">Tambah</button>
@@ -99,18 +95,12 @@ Total: <b id="allIncome"></b>
 <h3>Total: <span id="total">0</span></h3>
 <button onclick="checkout()">Bayar & Print</button>
 </div>
-
 </div>
 
 <!-- HISTORY -->
 <div id="history" class="hidden">
-
-<div class="card">
-<h3>History Penjualan</h3>
-</div>
-
+<div class="card"><h3>History Penjualan</h3></div>
 <div id="historyList"></div>
-
 </div>
 
 </div>
@@ -141,7 +131,7 @@ function toggleDark(){
 document.body.classList.toggle("dark");
 }
 
-/* ADD PRODUCT */
+/* ADD PRODUK */
 function add(){
 produk.push({
 id:Date.now(),
@@ -180,9 +170,13 @@ totalEl.innerText = total;
 document.getElementById("cart")?.innerHTML = html;
 }
 
-/* CHECKOUT */
+/* CHECKOUT FIX */
 function checkout(){
-if(cart.length===0) return;
+
+if(cart.length===0){
+toast("Cart kosong");
+return;
+}
 
 let total = cart.reduce((a,b)=>a+b.qty*b.jual,0);
 
@@ -204,43 +198,70 @@ cart=[];
 save();
 render();
 renderCart();
+
 printStruk(t);
 }
 
-/* STRUK */
+/* PRINT FIX FULL */
 function printStruk(t){
-let w = window.open("","_blank");
-if(!w){toast("popup blocked");return;}
 
-w.document.write(`
-<html><body style="font-family:monospace;padding:10px">
+let win = window.open("", "_blank");
+
+if(!win){
+alert("Popup diblokir browser. Aktifkan popup!");
+return;
+}
+
+win.document.write(`
+<html>
+<head>
+<title>Struk</title>
+</head>
+<body style="font-family:monospace;padding:10px">
+
 <center><h3>POS TOKO</h3></center>
 <hr>
+
 No: ${t.id}<br>
 ${new Date(t.time).toLocaleString()}
+
 <hr>
+
 ${t.items.map(i=>`
 ${i.nama}<br>
 ${i.qty} x ${i.jual} = ${i.qty*i.jual}<br>
 `).join("")}
+
 <hr>
+
 <b>Total: ${t.total}</b>
+
 <hr>
 <center>Terima kasih</center>
-</body></html>
+
+<script>
+window.onload = function(){
+window.print();
+setTimeout(()=>window.close(),500);
+}
+</script>
+
+</body>
+</html>
 `);
 
-w.document.close();
-w.print();
+win.document.close();
 }
 
 /* HISTORY */
 function renderHistory(){
-let html="";
+
 if(trx.length===0){
 historyList.innerHTML="<div class='card'>Kosong</div>";
 return;
 }
+
+let html="";
 
 trx.slice().reverse().forEach(t=>{
 html+=`
@@ -258,15 +279,14 @@ ${i.nama} (${i.qty}) = ${i.qty*i.jual}<br>
 historyList.innerHTML=html;
 }
 
-/* RENDER DASHBOARD */
+/* RENDER */
 function render(){
 
-pCount.innerText = produk.length;
+pCount.innerText=produk.length;
 
-sCount.innerText = produk.reduce((a,b)=>a+b.stok,0);
+sCount.innerText=produk.reduce((a,b)=>a+b.stok,0);
 
-/* income */
-let today = new Date().toISOString().split("T")[0];
+let today=new Date().toISOString().split("T")[0];
 let tday=0, all=0;
 
 trx.forEach(t=>{
@@ -277,7 +297,7 @@ if(t.time.startsWith(today)) tday+=t.total;
 todayIncome.innerText=tday;
 allIncome.innerText=all;
 
-/* table */
+/* TABLE */
 let html="";
 produk.forEach(p=>{
 html+=`
@@ -290,7 +310,7 @@ html+=`
 
 tbl.innerHTML=html;
 
-/* chart */
+/* CHART */
 if(window.chart) chart.destroy();
 
 chart=new Chart(document.getElementById("chart"),{
