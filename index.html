@@ -3,18 +3,17 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>POS FIX FINAL</title>
+<title>POS STABLE FINAL</title>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
-body{margin:0;font-family:Segoe UI;display:flex;background:#f1f5f9}
+body{margin:0;font-family:Arial;display:flex;background:#f1f5f9}
 .dark{background:#0f172a;color:white}
 
 .sidebar{
 width:220px;height:100vh;background:#111827;color:white;padding:10px
 }
-
 .sidebar button{
 width:100%;margin:5px 0;padding:10px;background:none;border:0;color:white;text-align:left;cursor:pointer
 }
@@ -41,7 +40,7 @@ position:fixed;bottom:20px;right:20px;background:black;color:white;padding:10px;
 <body>
 
 <div class="sidebar">
-<h3>POS FIX</h3>
+<h3>POS STABLE</h3>
 <button onclick="nav('dash')">Dashboard</button>
 <button onclick="nav('stok')">Stok</button>
 <button onclick="nav('kasir')">Kasir</button>
@@ -54,10 +53,10 @@ position:fixed;bottom:20px;right:20px;background:black;color:white;padding:10px;
 <!-- DASH -->
 <div id="dash">
 <div class="card">
-Produk: <b id="pCount"></b><br>
-Stok: <b id="sCount"></b><br>
-Hari ini: <b id="todayIncome"></b><br>
-Total: <b id="allIncome"></b>
+Produk: <b id="pCount">0</b><br>
+Stok: <b id="sCount">0</b><br>
+Hari ini: <b id="todayIncome">0</b><br>
+Total: <b id="allIncome">0</b>
 </div>
 
 <div class="card">
@@ -67,12 +66,13 @@ Total: <b id="allIncome"></b>
 
 <!-- STOK -->
 <div id="stok" class="hidden">
+
 <div class="card">
 <input id="kode" placeholder="Kode">
 <input id="nama" placeholder="Nama">
 <input id="jual" type="number" placeholder="Harga">
 <input id="stokv" type="number" placeholder="Stok">
-<button onclick="add()">Tambah</button>
+<button onclick="addProduct()">Tambah</button>
 </div>
 
 <div class="card">
@@ -81,10 +81,12 @@ Total: <b id="allIncome"></b>
 <tbody id="tbl"></tbody>
 </table>
 </div>
+
 </div>
 
 <!-- KASIR -->
 <div id="kasir" class="hidden">
+
 <div class="card">
 <input id="scan" placeholder="Kode">
 <button onclick="addCart()">Tambah</button>
@@ -95,6 +97,7 @@ Total: <b id="allIncome"></b>
 <h3>Total: <span id="total">0</span></h3>
 <button onclick="checkout()">Bayar & Print</button>
 </div>
+
 </div>
 
 <!-- HISTORY -->
@@ -107,23 +110,24 @@ Total: <b id="allIncome"></b>
 
 <script>
 
-let produk = JSON.parse(localStorage.getItem("p")||"[]");
-let trx = JSON.parse(localStorage.getItem("t")||"[]");
+let products = JSON.parse(localStorage.getItem("products")||"[]");
+let transactions = JSON.parse(localStorage.getItem("trx")||"[]");
 let cart = [];
 
 /* SAVE */
 function save(){
-localStorage.setItem("p",JSON.stringify(produk));
-localStorage.setItem("t",JSON.stringify(trx));
+localStorage.setItem("products",JSON.stringify(products));
+localStorage.setItem("trx",JSON.stringify(transactions));
 }
 
 /* NAV */
-function nav(x){
-["dash","stok","kasir","history"].forEach(i=>{
-document.getElementById(i).classList.add("hidden");
+function nav(page){
+["dash","stok","kasir","history"].forEach(p=>{
+document.getElementById(p).classList.add("hidden");
 });
-document.getElementById(x).classList.remove("hidden");
-if(x==="history") renderHistory();
+document.getElementById(page).classList.remove("hidden");
+
+if(page==="history") renderHistory();
 }
 
 /* DARK */
@@ -131,116 +135,117 @@ function toggleDark(){
 document.body.classList.toggle("dark");
 }
 
-/* ADD PRODUK */
-function add(){
-produk.push({
+/* ADD PRODUCT */
+function addProduct(){
+if(!kode.value || !nama.value) return toast("Data kosong");
+
+products.push({
 id:Date.now(),
 kode:kode.value,
 nama:nama.value,
-jual:+jual.value||0,
-stok:+stokv.value||0
+jual:Number(jual.value)||0,
+stok:Number(stokv.value)||0
 });
-save();render();
+
+kode.value="";nama.value="";jual.value="";stokv.value="";
+
+save();
+render();
+toast("Produk ditambah");
 }
 
 /* ADD CART */
 function addCart(){
-let p = produk.find(x=>x.kode===scan.value);
-if(!p){toast("Produk tidak ada");return;}
-if(p.stok<=0){toast("Stok habis");return;}
 
-let i = cart.find(x=>x.id===p.id);
-if(i) i.qty++;
+let p = products.find(x=>x.kode===scan.value);
+
+if(!p) return toast("Produk tidak ditemukan");
+if(p.stok<=0) return toast("Stok habis");
+
+let c = cart.find(x=>x.id===p.id);
+
+if(c) c.qty++;
 else cart.push({...p,qty:1});
 
-renderCart();
 scan.value="";
+renderCart();
 }
 
-/* CART */
+/* CART RENDER */
 function renderCart(){
-let html="", total=0;
+
+let html="";
+let total=0;
 
 cart.forEach(i=>{
 total += i.qty*i.jual;
 html += `<div>${i.nama} x${i.qty}</div>`;
 });
 
-totalEl.innerText = total;
-document.getElementById("cart")?.innerHTML = html;
+document.getElementById("cart").innerHTML = html;
+document.getElementById("total").innerText = total;
 }
 
-/* CHECKOUT FIX */
+/* CHECKOUT */
 function checkout(){
 
-if(cart.length===0){
-toast("Cart kosong");
-return;
-}
+if(cart.length===0) return toast("Cart kosong");
 
 let total = cart.reduce((a,b)=>a+b.qty*b.jual,0);
 
-let t = {
+let trx = {
 id:Date.now(),
 time:new Date().toISOString(),
 items:JSON.parse(JSON.stringify(cart)),
 total
 };
 
-trx.push(t);
+transactions.push(trx);
 
+/* update stok */
 cart.forEach(i=>{
-let p = produk.find(x=>x.id===i.id);
+let p = products.find(x=>x.id===i.id);
 if(p) p.stok -= i.qty;
 });
 
 cart=[];
+
 save();
 render();
 renderCart();
-
-printStruk(t);
+printStruk(trx);
+toast("Transaksi sukses");
 }
 
-/* PRINT FIX FULL */
+/* PRINT FIX STABLE */
 function printStruk(t){
 
-let win = window.open("", "_blank");
+let w = window.open("","_blank");
 
-if(!win){
-alert("Popup diblokir browser. Aktifkan popup!");
+if(!w){
+alert("Popup diblokir browser");
 return;
 }
 
-win.document.write(`
+w.document.write(`
 <html>
-<head>
-<title>Struk</title>
-</head>
 <body style="font-family:monospace;padding:10px">
-
-<center><h3>POS TOKO</h3></center>
+<center><h3>STRUK TOKO</h3></center>
 <hr>
-
-No: ${t.id}<br>
+ID: ${t.id}<br>
 ${new Date(t.time).toLocaleString()}
-
 <hr>
-
 ${t.items.map(i=>`
 ${i.nama}<br>
 ${i.qty} x ${i.jual} = ${i.qty*i.jual}<br>
 `).join("")}
-
 <hr>
-
 <b>Total: ${t.total}</b>
-
 <hr>
 <center>Terima kasih</center>
 
 <script>
-window.onload = function(){
+window.onload=function(){
 window.print();
 setTimeout(()=>window.close(),500);
 }
@@ -250,76 +255,68 @@ setTimeout(()=>window.close(),500);
 </html>
 `);
 
-win.document.close();
+w.document.close();
 }
 
 /* HISTORY */
 function renderHistory(){
 
-if(trx.length===0){
+if(transactions.length===0){
 historyList.innerHTML="<div class='card'>Kosong</div>";
 return;
 }
 
-let html="";
-
-trx.slice().reverse().forEach(t=>{
-html+=`
+historyList.innerHTML = transactions.slice().reverse().map(t=>`
 <div class="card">
 <b>ID:</b> ${t.id}<br>
 <b>Tanggal:</b> ${new Date(t.time).toLocaleString()}<br>
-<b>Total:</b> ${t.total}
+<b>Total:</b> ${t.total}<br>
 <hr>
-${t.items.map(i=>`
-${i.nama} (${i.qty}) = ${i.qty*i.jual}<br>
-`).join("")}
-</div>`;
-});
-
-historyList.innerHTML=html;
+${t.items.map(i=>`${i.nama} (${i.qty}) = ${i.qty*i.jual}<br>`).join("")}
+</div>
+`).join("");
 }
 
-/* RENDER */
+/* RENDER DASH */
 function render(){
 
-pCount.innerText=produk.length;
+pCount.innerText = products.length;
+sCount.innerText = products.reduce((a,b)=>a+b.stok,0);
 
-sCount.innerText=produk.reduce((a,b)=>a+b.stok,0);
+/* income */
+let today = new Date().toISOString().split("T")[0];
+let todayTotal=0;
+let allTotal=0;
 
-let today=new Date().toISOString().split("T")[0];
-let tday=0, all=0;
-
-trx.forEach(t=>{
-all+=t.total;
-if(t.time.startsWith(today)) tday+=t.total;
+transactions.forEach(t=>{
+allTotal += t.total;
+if(t.time.startsWith(today)) todayTotal += t.total;
 });
 
-todayIncome.innerText=tday;
-allIncome.innerText=all;
+todayIncome.innerText = todayTotal;
+allIncome.innerText = allTotal;
 
-/* TABLE */
-let html="";
-produk.forEach(p=>{
-html+=`
+/* table */
+tbl.innerHTML = products.map(p=>`
 <tr>
 <td>${p.nama}</td>
 <td>${p.stok}</td>
 <td><button onclick="restock(${p.id})">+</button></td>
-</tr>`;
-});
+</tr>
+`).join("");
 
-tbl.innerHTML=html;
-
-/* CHART */
+/* chart safe */
 if(window.chart) chart.destroy();
 
-chart=new Chart(document.getElementById("chart"),{
+let data = transactions.map(t=>t.total);
+
+chart = new Chart(document.getElementById("chart"),{
 type:"line",
 data:{
-labels:trx.map((t,i)=>i+1),
+labels:data.map((_,i)=>i+1),
 datasets:[{
 label:"Penjualan",
-data:trx.map(t=>t.total),
+data:data,
 borderColor:"blue"
 }]
 }
@@ -328,17 +325,17 @@ borderColor:"blue"
 
 /* RESTOCK */
 function restock(id){
-let j=prompt("Tambah stok");
-let p=produk.find(x=>x.id===id);
-if(p) p.stok+=+j;
+let qty = prompt("Tambah stok");
+let p = products.find(x=>x.id===id);
+if(p && qty) p.stok += Number(qty);
 save();render();
 }
 
 /* TOAST */
-function toast(t){
+function toast(msg){
 let d=document.createElement("div");
 d.className="toast";
-d.innerText=t;
+d.innerText=msg;
 document.body.appendChild(d);
 setTimeout(()=>d.remove(),2000);
 }
